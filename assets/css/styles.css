@@ -1,0 +1,30 @@
+.center
+{
+  margin: auto;
+  width: 50%;
+  border: 3px solid red;
+  padding: 20px;
+  margin-left: 20%;
+}
+
+.input-center
+{
+  margin: auto;
+  width: 20%;
+  border: 3px solid black;
+  padding: 20px;
+  margin: 40px;
+  margin-left: 20%;
+}
+
+.text-center2
+{
+  margin: auto;
+  width: 20%;
+  margin-left: 20%;
+}
+
+.center-text
+{
+    margin-left: 40px;
+}

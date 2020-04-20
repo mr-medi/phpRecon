@@ -7,6 +7,10 @@ class Domain
      */
     private $url;
     /*
+
+     */
+    private $host;
+    /*
     Un dominio tiene paginas asociadas, por ejemplo:
     login.php, noticias.php...
      */
@@ -25,6 +29,7 @@ class Domain
         $this->comments = array();
         $this->forms = array();
         $this->data = array();
+        $this->host = parse_url($this->url)['scheme']."://".parse_url($this->url)['host']."/";
     }
 
     public function getDataScan()
@@ -59,7 +64,6 @@ class Domain
             $protocol = parse_url($enlace)['scheme'];
             $host = parse_url($enlace)['host'];
             //SI ES UN ENLACE DEL MISMO DOMINIO...
-            //SI
             if(strpos($this->url,substr($enlace,0))!==false)
                 self::addPage($enlace);
         }
@@ -73,10 +77,10 @@ class Domain
 
         foreach($this->responses as $response)
         {
+            //echo $response['http_code']."<br>";
             $headers = $response['headers'];
-            foreach ($headers as $key => $value) {
-                echo "<strong>$key : </strong>".$value."<br>";
-            }
+            foreach ($headers as $param => $value)
+                echo "<strong>$param : </strong>".$value."<br>";
             $html = $response['html'];
             //echo $html;
         }
@@ -86,46 +90,63 @@ class Domain
         foreach($links as $link)
         {
             $enlace = $link->getAttribute('href');
+            /*
+            Prevent from adding the same page because  of #
+            ex:http://mipage.com/1#whatever
+             */
+            $isSamePage = substr($enlace,0,1) == '#';
+            //echo "<h2>$enlace</h2><br>";
             if(!self::is_absolute($enlace))
-                $enlace = $this->url.$enlace;
+                $enlace = $this->host.$enlace;
 
+            //print_r(parse_url($enlace));
+            //echo $enlace."<br>";
             $protocol = parse_url($enlace)['scheme'];
             $host = parse_url($enlace)['host'];
             //SI ES UN ENLACE DEL MISMO DOMINIO...
-            //var_dump(strpos($enlace,$protocol."://".$host));
-            if(strpos($enlace,$protocol."://".$host) !== false)
+            if(!in_array($enlace, $this->pages) && strpos($protocol."://".$host, parse_url($this->host)['host']) !== false && !$isSamePage)
             {
+                //echo "<h2>$enlace</h2><br>";
                 self::addPage($enlace);
             }
         }
         //OBTENIENDO ENLACES DE CADA ENLACE DE LA PAG PRINCIPAL
         $r = new Request($this->pages);
         $responses = $r->doGetRequests();
-        echo "<pre>: ";
+
         foreach($responses as $response)
         {
             $headers = $response['headers'];
+            //echo $response['url']." - ".$response['http_code']."<br>";
             $html = $response['html'];
             //echo $response['url']."ALLA: ".$html;
-            $dom = new DomDocument();
-            $dom->loadHTML($html);
-            $links = $dom->getElementsByTagName('a');
-            foreach($links as $link)
+            if($response['http_code'] == 200)
             {
-                $enlace = $link->getAttribute('href');
-                //print_r(parse_url($enlace));
-                if(!self::is_absolute($enlace))
-                    $enlace = $this->url.$enlace;
-                if(!in_array($enlace, $this->pages))
+                $dom = new DomDocument();
+                $dom->loadHTML($html);
+                $links = $dom->getElementsByTagName('a');
+                foreach($links as $link)
                 {
-                    //print_r(parse_url($enlace))."<BR>";
-                    $protocol = parse_url($enlace)['scheme'];
-                    $host = parse_url($enlace)['host'];
-                    $hostDomain = parse_url($this->url)['host'];
-                    //SI ES UN ENLACE DEL MISMO DOMINIO...
-                    if(strpos($hostDomain,$host) !== false)
+                    $enlace = $link->getAttribute('href');
+                    /*
+                    Prevent from adding the same page because  of #
+                    ex:http://mipage.com/1#
+                     */
+                    $isSamePage = substr($enlace,0,1) == '#';
+
+                    if(!self::is_absolute($enlace))
+                        $enlace = $this->host.$enlace;
+
+                    if(!in_array($enlace, $this->pages) && !$isSamePage)
                     {
-                        self::addPage($enlace);
+                        //echo $enlace." - ".$response['http_code']."<br>";
+                        $protocol = parse_url($enlace)['scheme'];
+                        $host = parse_url($enlace)['host'];
+                        //SI ES UN ENLACE DEL MISMO DOMINIO...
+                        if(strpos($protocol."://".$hostDomain,$this->host) !== false)
+                        {
+                            self::addPage($enlace);
+                        }
                     }
                 }
             }
@@ -139,38 +160,40 @@ class Domain
 
         foreach($responses as $response)
         {
+            $this->comments = [];
             $headers = $response['headers'];
             $html = $response['html'];
-            //header('content-type:text/plain');
-            //echo $html;
-            //echo $response['url']."<br>";
             $dom = new DomDocument();
             $dom->loadHTML($html);
-            $body = $dom->getElementsByTagName('body');
-            $body = $body->item(0);
-            $comments = [];
-            //GET COMMENTS
-            foreach($body->childNodes as $node)
-            {
-                if($node->nodeType == 8)
-                {
-                     $this->comments[] = $node->nodeValue;
-                     $comments[] = $node->nodeValue;
-                }
-            }
+            self::showDOMNode($dom);
             //GET FORMUS
-            $formus = [];
+            $this->forms = [];
             $forms = $dom->getElementsByTagName('form');
             foreach($forms as $f)
             {
                 $this->forms[] = $f;
-                $formus[] = $f;
             }
             $this->data[] =
             ['url'=>$response['url'],
-            'comments'=>$comments,
-            'forms'=>$formus,
+            'comments'=>$this->comments,
+            'forms'=>$this->forms,
             'headers'=>$headers];
+        }
+    }
+
+    public function showDOMNode($domNode)
+    {
+        foreach ($domNode->childNodes as $node)
+        {
+            //SI ES UN COMENTARIO..
+            if($node->nodeType == 8)
+            {
+                 $this->comments[] = $node->nodeValue;
+            }
+            if($node->hasChildNodes())
+            {
+                self::showDOMNode($node);
+            }
         }
     }
 

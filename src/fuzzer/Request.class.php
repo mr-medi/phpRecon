@@ -23,11 +23,14 @@ class Request
         $master = curl_multi_init();
         $curl_arr = array();
         $std_options = array(
+            //CURLOPT_REFERER => $this->url,
+            //CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_AUTOREFERER    => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_VERBOSE => 1,
             CURLOPT_HEADER => 1,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_MAXREDIRS => 2,
+            CURLOPT_MAXREDIRS => 10,
             CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.83 Safari/537.1');
         $options = $std_options;
         for ($i = 0; $i < $rolling_window; $i++)
@@ -62,7 +65,8 @@ class Request
               $header = self::getHeaders($header);
               // extract body
               $body = substr($output, $headerSize);
-              $dataURLS[] = ['url'=>$info['url'],'html'=>$output,'headers'=>$header];
+              //echo "<h2>".$info['http_code']."</h2><br>";
+              $dataURLS[] = ['url'=>$info['url'],'html'=>$output,'headers'=>$header,'http_code'=>$info['http_code']];
               // remove the curl handle that just completed
               curl_multi_remove_handle($master, $done['handle']);
           }
