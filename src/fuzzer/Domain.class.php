@@ -77,16 +77,13 @@ class Domain
 
         foreach($this->responses as $response)
         {
-            //echo $response['http_code']."<br>";
             $headers = $response['headers'];
-            foreach ($headers as $param => $value)
-                echo "<strong>$param : </strong>".$value."<br>";
             $html = $response['html'];
-            //echo $html;
         }
         $dom = new DomDocument();
         $dom->loadHTML($html);
         $links = $dom->getElementsByTagName('a');
+
         foreach($links as $link)
         {
             $enlace = $link->getAttribute('href');
@@ -94,10 +91,17 @@ class Domain
             Prevent from adding the same page because  of #
             ex:http://mipage.com/1#whatever
              */
-            $isSamePage = substr($enlace,0,1) == '#';
-            //echo "<h2>$enlace</h2><br>";
+            $isSamePage = substr($enlace, 0, 1) == '#';
+
+            //IF THE ROUTE IS RELATIVE...
             if(!self::is_absolute($enlace))
-                $enlace = $this->host.$enlace;
+            {
+                //IS THE LINK IN THE ROOT DIRECTORY ?
+                if(substr($enlace, 0, 1) == '/')
+                    $enlace = $this->host.$enlace;
+                else
+                    $enlace = $this->url.$enlace;
+            }
 
             //print_r(parse_url($enlace));
             //echo $enlace."<br>";
@@ -134,17 +138,31 @@ class Domain
                      */
                     $isSamePage = substr($enlace,0,1) == '#';
 
+                    //IF THE ROUTE IS RELATIVE...
                     if(!self::is_absolute($enlace))
-                        $enlace = $this->host.$enlace;
-
+                    {
+                        //IS THE LINK IN THE ROOT DIRECTORY ?
+                        if(substr($enlace, 0, 1) == '/')
+                            $enlace = $this->host.$enlace;
+                        elseif(substr($enlace, 0, 2) == './')
+                            $enlace = $response['url'].substr($enlace,2);
+                        else
+                            $enlace = $this->url.$enlace;
+                    }
+                    //echo $enlace." - ".$response['url']."<br>";
+                    //echo $enlace."<br>";
                     if(!in_array($enlace, $this->pages) && !$isSamePage)
                     {
-                        //echo $enlace." - ".$response['http_code']."<br>";
                         $protocol = parse_url($enlace)['scheme'];
                         $host = parse_url($enlace)['host'];
+                        $urlLink = $protocol."://".$host;
+                        $urlDomain = parse_url($this->host)['scheme']."://".parse_url($this->host)['host'];
+                        $isOk = strpos($protocol."://".$hostDomain,parse_url($this->host)['scheme']."://".parse_url($this->host)['host']);
+                        //echo $urlLink." - ".$urlDomain."<strong>".var_dump($isOk)."</strong><br>";
                         //SI ES UN ENLACE DEL MISMO DOMINIO...
-                        if(strpos($protocol."://".$hostDomain,$this->host) !== false)
+                        if(strpos($urlLink, $urlDomain) !== false)
                         {
+                            //echo $enlace." - ".$response['http_code']."<br>";
                             self::addPage($enlace);
                         }
                     }
@@ -160,6 +178,7 @@ class Domain
 
         foreach($responses as $response)
         {
+            //echo $response['url']."<br>";
             $this->comments = [];
             $headers = $response['headers'];
             $html = $response['html'];
@@ -209,5 +228,102 @@ class Domain
         (?:[a-z0-9\-\.]|%[0-9a-f]{2})+|(?:\[(?:[0-9a-f]{0,4}:)*(?:[0-9a-f]{0,4})\]))(?::[0-9]+)?(?:[\/|\?]
         (?:[\w#!:\.\?\+=&@$'~*,;\/\(\)\[\]\-]|%[0-9a-f]{2})*)?$/xi";
         return (bool) preg_match($pattern, $url);
+    }
+
+    /*
+    Return all comments with custom style
+    @return string
+     */
+    public function getParsedComments($url)
+    {
+        $result = "";
+        foreach($this->data as $data)
+        {
+            $urlIterator = $data['url'];
+            $comments = $data['comments'];
+            if($url == $urlIterator)
+            {
+                foreach ($comments as $c)
+                {
+                    $comment = trim(htmlspecialchars($c));
+                    if($comment != "")
+                    {
+                        $result .= "<br><strong><span style='color:green'> + </span>Comentario: </strong><br><br>";
+                        $result .= $comment."<br>";
+                    }
+                }
+            }
+        }
+        return $result;
+    }
+
+    /*
+    Return all forms with custom style
+    @return string
+     */
+    public function getParsedForms($url)
+    {
+        $list = file_get_contents('dics/rockyou.txt');
+        $words = explode("\n" , $list);
+        $i = 0;
+        $result = "";
+        foreach($this->data as $data)
+        {
+            $urlIterator = $data['url'];
+            $forms = $data['forms'];
+            if($url == $urlIterator)
+            {
+                foreach ($forms as $f)
+                {
+                    $action = $url;
+                    $result .= "<div name='forms' class='center-text'>";
+                    $result .= "<strong><span style='color:green'> + </span>Formu: </strong><br><br>";
+                    $result .= "<strong>action: </strong>".$action."<br>";
+                    $result .= "<strong>method: </strong>".$f->getAttribute('method')."<br>";
+                    $params = [];
+                    foreach($f->getElementsByTagName('input') as $input)
+                    {
+                        $result .= "<strong><span style='color:red'> * </span>input: </strong><br>";
+                        $name = $input->getAttribute('name');
+                        $type = $input->getAttribute('type');
+                        $value = $input->getAttribute('value');
+                        $result .= $name.": ".$type;
+                        if($value != "")
+                        {
+                            $result .= " => ".$value;
+                            $params[] = ['name'=>$name, 'value'=>$value];
+                        }
+                        else
+                        {
+                            if($name == 'mail' || $type == "email" || $name =="email")
+                            {
+                                $params[] = ['name'=>$name, 'value'=>'a@a.com'];
+                            }
+                            elseif($type == 'password')
+                            {
+                                $params[] = ['name'=>$name, 'value'=>$words[$i]];
+                            }
+                            else
+                            {
+                                $params[] = ['name'=>$name, 'value'=>'admin'];
+                            }
+                        }
+                        $result .= "<br>";
+                    }
+                    //BRUTER
+                    if(strtoupper($f->getAttribute('method')) == 'POST')
+                    {
+                        $result .= "<div name='bruter'>";
+                        $result .= "<form method='POST' action=''>";
+                        $result .= "<input type='hidden' name='action' value='$action'>";
+                        $result .= "<input type='hidden' name='params' value='".json_encode($params)."'>";
+                        $result .= "<input type='submit' name='bruter' value='Do Bruter'>";
+                        $result .= "</form></div>";
+                    }
+                    $result .= "</div><br>";
+                }
+            }
+        }
+        return $result;
     }
 }

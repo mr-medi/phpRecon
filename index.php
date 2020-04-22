@@ -22,6 +22,7 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
               <button class="nav-link active" id="index">Index</button>
               <button class="nav-link" id ='comment' >Comments</button>
               <button class="nav-link" id='form'>Forms</button>
+              <button class="nav-link" id='header'>Headers</button>
               <button class="nav-link" id='bruter'>Bruter</button>
             </nav>
           </div>
@@ -29,7 +30,7 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
         <!--Fin header -->
         <form action="" method="POST">
             <h2 class="text-center2">Domain:</h2>
-            <input type="text" class="input-center" placeholder="https://www.google.com" name="domain"><br>
+            <input type="text" class="input-center" placeholder="https://www.google.com" name="domain" autofocus><br>
             <input type="submit" name="enviar" class="text-center2">
         </form>
         </div>
@@ -38,47 +39,53 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
         //
         if(isset($_POST['bruter']))
         {
+            $list = file_get_contents('dics/rockyou.txt');
+            $words = explode("\n" , $list);
             $action = $_POST['action'];
             $method = 'POST';
             $params = json_decode($_POST['params'], true);
-            $r = new Request([$action]);
+            $i = 0;
 
-            foreach($params as $param)
+            foreach($words as $word)
             {
-                $name = $param['name'];
-                $value = $param['value'];
-                echo "<strong>$name : </strong>$value<br>";
-                //ADDING PARAMS
-                if($value != "")
+                $r = new Request([$action]);
+                foreach($params as $param)
                 {
-                    $res .= " => ".$value;
-                    $r->addParam($name, $value);
-                    $params[] = ['name'=>$name, 'value'=>$value];
-                }
-                else
-                {
-                    if($name == 'mail' || $type == "email" || $name =="email")
+                    $name = $param['name'];
+                    $value = $param['value'];
+                    echo "<strong>$name : </strong>$value<br>";
+                    //ADDING PARAMS
+                    if($value != "")
                     {
-                        $r->addParam($name, 'a@a.com');
-                        $params[] = ['name'=>$name, 'value'=>'a@a.com'];
+                        $r->addParam($name, $value);
                     }
                     else
                     {
-                        $r->addParam($name, 'phpRecon');
-                        $params[] = ['name'=>$name, 'value'=>'phpRecon'];
+                        if($name == 'mail' || $type == "email" || $name =="email")
+                        {
+                            $r->addParam($name, 'a@a.com');
+                        }
+                        elseif(strtolower($type) == 'password' || $name == 'password')
+                        {
+                            $r->addParam($name, $word);
+                        }
+                        else
+                        {
+                            $r->addParam($name, 'admin');
+                        }
                     }
                 }
-            }
-            $responses = $r->doPostRequests();
+                $responses = $r->doPostRequests();
 
-            foreach($responses as $response)
-            {
-                $headers = $response['headers'];
-                foreach ($headers as $param => $value)
-                    echo "<strong>$param : </strong>".$value."<br>";
-                $html = $response['html'];
-                echo "<br><strong>Response: </strong><br>";
-                echo $html;
+                foreach($responses as $response)
+                {
+                    $headers = $response['headers'];
+                    foreach ($headers as $param => $value)
+                        echo "<strong>$param : </strong>".$value."<br>";
+                    $html = $response['html'];
+                    echo "<br><strong>Response: </strong><br>";
+                    echo $response['http_code']."<br>";
+                }
             }
 
         }
@@ -94,72 +101,31 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
             echo "<br><br><h2>Results for <strong>$domain: </strong></h2>";
             $domain = new Domain($domain);
             $urls = $domain->getDataScan();
+            echo "<pre>";
+            //print_r($urls);
             //$domain->getPublicInfo();
             foreach($urls as $url)
             {
-                foreach ($url['headers'] as $key => $value) {
-                    //echo $key.": ".$value."<br>";
-                }
-                //print_r($url);
                 $page = $url['url'];
                 $totalComments = count($url['comments']);
                 $totalForms = count($url['forms']);
-                //COMMENTS
+                echo "<div name='url'>";
+                echo "<span name='totalComments' style='display:none'>$totalComments</span>";
+                echo "<span name='totalForms' style='display:none'>$totalForms</span>";
                 echo "<br><br><h2><span style='color:blue'>[ - ]</span>".$page."</h2><br>";
+                //HEADERS
+                echo "<div name='header' class='center-text'>";
+                echo "<strong><span style='color:green'> + </span>Headers: </strong><br><br>";
+                foreach ($url['headers'] as $param => $value)
+                    echo "<strong>".$param.": </strong>".$value."<br>";
+                echo "</div>";
+                //COMMENTS
                 echo "<div name='comments' class='center-text'>";
-                foreach ($url['comments'] as $c)
-                {
-                    $comment = trim(htmlspecialchars($c));
-                    if($comment != "")
-                    {
-                        echo "<br><strong><span style='color:green'> + </span>Comentario: </strong><br><br>";
-                        echo $comment."<br>";
-                    }
-                }
+                echo $domain->getParsedComments($page);
                 echo "</div><br>";
                 //FORMS
-                foreach ($url['forms'] as $f)
-                {
-                    $action = $page;
-                    echo "<div name='forms' class='center-text'>";
-                    echo "<strong><span style='color:green'> + </span>Formu: </strong><br><br>";
-                    echo "<strong>action: </strong>".$action."<br>";
-                    echo "<strong>method: </strong>".$f->getAttribute('method')."<br>";
-                    $params = [];
-                    foreach($f->getElementsByTagName('input') as $input)
-                    {
-                        echo "<strong><span style='color:red'> * </span>input: </strong><br>";
-                        $name = $input->getAttribute('name');
-                        $type = $input->getAttribute('type');
-                        $value = $input->getAttribute('value');
-                        $res = $name.": ".$type;
-                        if($value != "")
-                        {
-                            $res .= " => ".$value;
-                            $params[] = ['name'=>$name, 'value'=>$value];
-                        }
-                        else
-                        {
-                            if($name == 'mail' || $type == "email" || $name =="email")
-                                $params[] = ['name'=>$name, 'value'=>'a@a.com'];
-                            else
-                                $params[] = ['name'=>$name, 'value'=>'phpRecon'];
-                        }
-                        $res .= "<br>";
-                        echo $res;
-                    }
-                    //BRUTER
-                    if(strtoupper($f->getAttribute('method')) == 'POST')
-                    {
-                        echo "<div name='bruter'>";
-                        echo "<form method='POST' action=''>";
-                        echo "<input type='hidden' name='action' value='$action'>";
-                        echo "<input type='hidden' name='params' value='".json_encode($params)."'>";
-                        echo "<input type='submit' name='bruter' value='Do Bruter'>";
-                        echo "</form></div>";
-                    }
-                    echo "</div><br>";
-                }
+                echo $domain->getParsedForms($page);
+                echo "</div>";
             }
         }
         ?>

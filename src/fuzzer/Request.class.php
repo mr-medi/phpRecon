@@ -79,7 +79,7 @@ class Request
     {
         $params = "";
         //echo http_build_query($this->params)."<br>";
-        foreach ($this->params AS $p)
+        foreach ($this->params as $p)
             $params .= $p['param'].'='.$p['value'].'&';
         $params = rtrim($params, '&');
         //echo $params."<br>";
@@ -130,7 +130,7 @@ class Request
               $header = self::getHeaders($header);
               // extract body
               $body = substr($output, $headerSize);
-              $dataURLS[] = ['url'=>$info['url'],'html'=>$body,'headers'=>$header];
+              $dataURLS[] = ['url'=>$info['url'],'html'=>$body,'headers'=>$header,'http_code'=>$info['http_code']];
               // remove the curl handle that just completed
               curl_multi_remove_handle($master, $done['handle']);
           }
