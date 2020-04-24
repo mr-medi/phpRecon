@@ -86,19 +86,35 @@ class Domain
 
         foreach($links as $link)
         {
+            $pathLink = parse_url($response['url'])['scheme']."://".parse_url($response['url'])['host'].parse_url($response['url'])['path'];
             $enlace = $link->getAttribute('href');
+            //echo $enlace."<br>";
+            $isMailLink = substr($enlace, 0, 7) == 'mailto:';
             /*
             Prevent from adding the same page because  of #
             ex:http://mipage.com/1#whatever
              */
             $isSamePage = substr($enlace, 0, 1) == '#';
-
             //IF THE ROUTE IS RELATIVE...
             if(!self::is_absolute($enlace))
             {
+                if(substr($enlace, 0, 2) == '//')
+                {
+                    $protocol = parse_url($this->host)['scheme'];
+                    $enlace = $protocol.":".$enlace;
+                }
                 //IS THE LINK IN THE ROOT DIRECTORY ?
-                if(substr($enlace, 0, 1) == '/')
-                    $enlace = $this->host.$enlace;
+                elseif(substr($enlace, 0, 1) == '/')
+                    $enlace = $this->host.substr($enlace,1);
+                elseif(substr($enlace, 0, 3) == '../')
+                    $enlace = '';
+                elseif(substr($enlace, 0, 2) == './')
+                    $enlace = $response['url'].substr($enlace, 2);
+                elseif(substr($enlace, 0, 1) == '?')
+                {
+                    echo $pathLink."<BR>";
+                    $enlace = $pathLink.$enlace;
+                }
                 else
                     $enlace = $this->url.$enlace;
             }
@@ -108,7 +124,7 @@ class Domain
             $protocol = parse_url($enlace)['scheme'];
             $host = parse_url($enlace)['host'];
             //SI ES UN ENLACE DEL MISMO DOMINIO...
-            if(!in_array($enlace, $this->pages) && strpos($protocol."://".$host, parse_url($this->host)['host']) !== false && !$isSamePage)
+            if(!$isMailLink && !in_array($enlace, $this->pages) && strpos($protocol."://".$host, parse_url($this->host)['host']) !== false && !$isSamePage)
             {
                 //echo "<h2>$enlace</h2><br>";
                 self::addPage($enlace);
@@ -131,33 +147,54 @@ class Domain
                 $links = $dom->getElementsByTagName('a');
                 foreach($links as $link)
                 {
+                    $pathLink = parse_url($response['url'])['scheme']."://".parse_url($response['url'])['host'].parse_url($response['url'])['path'];
                     $enlace = $link->getAttribute('href');
+                    $isMailLink = substr($enlace, 0, 7) == 'mailto:';
                     /*
                     Prevent from adding the same page because  of #
                     ex:http://mipage.com/1#
                      */
                     $isSamePage = substr($enlace,0,1) == '#';
-
+                    //echo $enlace."<br>";
                     //IF THE ROUTE IS RELATIVE...
                     if(!self::is_absolute($enlace))
                     {
+                        if(substr($enlace, 0, 2) == '//')
+                        {
+                            $protocol = parse_url($this->host)['scheme'];
+                            $enlace = $protocol.":".$enlace;
+                        }
                         //IS THE LINK IN THE ROOT DIRECTORY ?
-                        if(substr($enlace, 0, 1) == '/')
-                            $enlace = $this->host.$enlace;
+                        elseif(substr($enlace, 0, 1) == '/')
+                            $enlace = $this->host.substr($enlace,1);
+                        elseif(substr($enlace, 0, 3) == '../')
+                            $enlace = '';
                         elseif(substr($enlace, 0, 2) == './')
-                            $enlace = $response['url'].substr($enlace,2);
+                            $enlace = $response['url'].substr($enlace, 2);
+                        elseif(substr($enlace, 0, 1) == '?')
+                        {
+                            //echo "<h2>$enlace</h2>";
+                            //print_r(parse_url($response['url']));
+                            $path = parse_url($response['url'])['path'];
+                            //echo $this->host." . ".$path."<br>";
+                            $enlace = $this->host.$path.$enlace;
+                            //echo "RES::".$enlace."<br>";
+                        }
                         else
-                            $enlace = $this->url.$enlace;
+                        {
+                            $enlace = $this->host.$enlace;
+                            //echo $pathLink."<BR>";
+                        }
                     }
-                    //echo $enlace." - ".$response['url']."<br>";
-                    //echo $enlace."<br>";
-                    if(!in_array($enlace, $this->pages) && !$isSamePage)
+
+
+                    if(!in_array($enlace, $this->pages) && !$isSamePage && !$isMailLink)
                     {
+                        //echo $enlace." - ".$response['url']."<br>";
                         $protocol = parse_url($enlace)['scheme'];
                         $host = parse_url($enlace)['host'];
                         $urlLink = $protocol."://".$host;
                         $urlDomain = parse_url($this->host)['scheme']."://".parse_url($this->host)['host'];
-                        $isOk = strpos($protocol."://".$hostDomain,parse_url($this->host)['scheme']."://".parse_url($this->host)['host']);
                         //echo $urlLink." - ".$urlDomain."<strong>".var_dump($isOk)."</strong><br>";
                         //SI ES UN ENLACE DEL MISMO DOMINIO...
                         if(strpos($urlLink, $urlDomain) !== false)
@@ -248,8 +285,8 @@ class Domain
                     $comment = trim(htmlspecialchars($c));
                     if($comment != "")
                     {
-                        $result .= "<br><strong><span style='color:green'> + </span>Comentario: </strong><br><br>";
-                        $result .= $comment."<br>";
+                        $result .= "<br><div style='margin-left:30px'><h5><strong><span style='color:#e68a00;'>[ * ]</span>Comment: </strong></h5><br><br>";
+                        $result .= "".$comment."</div><br>";
                     }
                 }
             }
@@ -276,9 +313,9 @@ class Domain
                 foreach ($forms as $f)
                 {
                     $action = $url;
-                    $result .= "<div name='forms' class='center-text'>";
-                    $result .= "<strong><span style='color:green'> + </span>Formu: </strong><br><br>";
-                    $result .= "<strong>action: </strong>".$action."<br>";
+                    $result .= "<div name='forms' class='center-text' style='margin-left:30px'>";
+                    $result .= "<h5><strong><span style='color:#e68a00'>[ * ]</span>Form: </strong></h5><br><br>";
+                    $result .= "<div style='margin-left:40px;'><strong>action: </strong>".$action."<br>";
                     $result .= "<strong>method: </strong>".$f->getAttribute('method')."<br>";
                     $params = [];
                     foreach($f->getElementsByTagName('input') as $input)
@@ -310,6 +347,7 @@ class Domain
                         }
                         $result .= "<br>";
                     }
+                    $result .= "</div><br>";
                     //BRUTER
                     if(strtoupper($f->getAttribute('method')) == 'POST')
                     {

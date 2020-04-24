@@ -87,12 +87,15 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
                     echo $response['http_code']."<br>";
                 }
             }
-
         }
         //
         if(isset($_POST['domain']) && isset($_POST['enviar']))
         {
             $domain = $_POST['domain'];
+            if(!filter_var($domain, FILTER_VALIDATE_URL))
+            {
+                die("URL INVALIDA!");
+            }
             $extension = pathinfo(parse_url($domain)['path'], PATHINFO_EXTENSION);
             //echo $extension;
             //echo "<pre>";print_r(parse_url($domain));
@@ -100,10 +103,17 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
                 $domain = $domain.'/';
             echo "<br><br><h2>Results for <strong>$domain: </strong></h2>";
             $domain = new Domain($domain);
+            $start_time = microtime(true);
             $urls = $domain->getDataScan();
-            echo "<pre>";
-            //print_r($urls);
+            $end_time = microtime(true);
+            $execution_time = ($end_time - $start_time);
             //$domain->getPublicInfo();
+            //INFO SCAN
+            echo "<div id='resume'>";
+            echo "<p>Total enlaces encontrados  : <strong>". count($urls) ." </strong></p>";
+            echo "<p>Resultados obtenidos en <strong>".$execution_time."</strong> segundos....</p><br>";
+            echo "</div>";
+            //FIN SCAN
             foreach($urls as $url)
             {
                 $page = $url['url'];
@@ -115,17 +125,20 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
                 echo "<br><br><h2><span style='color:blue'>[ - ]</span>".$page."</h2><br>";
                 //HEADERS
                 echo "<div name='header' class='center-text'>";
-                echo "<strong><span style='color:green'> + </span>Headers: </strong><br><br>";
+                echo "<h3><strong><span style='color:green'>[ + ]</span>Headers: </strong></h3><br><br>";
                 foreach ($url['headers'] as $param => $value)
-                    echo "<strong>".$param.": </strong>".$value."<br>";
+                    echo "<strong style='margin-left:30px'>".$param.": </strong>".$value."<br>";
                 echo "</div>";
                 //COMMENTS
                 echo "<div name='comments' class='center-text'>";
+                echo $totalComments > 0 ? "<br><br><h3><strong><span style='color:green'>[ + ]</span>Comments: </strong></h3><br><br>":"";
                 echo $domain->getParsedComments($page);
                 echo "</div><br>";
                 //FORMS
+                echo "<div name='forms' class='center-text'>";
+                echo $totalForms > 0 ? "<br><br><h3><strong><span style='color:green'>[ + ]</span>Forms: </strong></h3><br><br>":"";
                 echo $domain->getParsedForms($page);
-                echo "</div>";
+                echo "</div></div>";
             }
         }
         ?>
