@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__."/src/fuzzer/Domain.class.php";
-require_once __DIR__."/src/fuzzer/Page.class.php";
+//require_once __DIR__."/src/fuzzer/Page.class.php";
 require_once __DIR__."/src/fuzzer/Request.class.php";
 ?>
 <!DOCTYPE html>
@@ -45,46 +45,54 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
             $method = 'POST';
             $params = json_decode($_POST['params'], true);
             $i = 0;
+            $urls = [];
 
             foreach($words as $word)
             {
-                $r = new Request([$action]);
+                //echo $word;
+                $paramsRequest = [];
                 foreach($params as $param)
                 {
                     $name = $param['name'];
                     $value = $param['value'];
-                    echo "<strong>$name : </strong>$value<br>";
+                    $type = $param['type'];
+                    //echo "<strong>$name : </strong>$value<br>";
                     //ADDING PARAMS
                     if($value != "")
                     {
-                        $r->addParam($name, $value);
+                        $paramsRequest[] = ['name'=>$name,'value'=>$value,'type'=>$type];
                     }
                     else
                     {
                         if($name == 'mail' || $type == "email" || $name =="email")
                         {
-                            $r->addParam($name, 'a@a.com');
+                            $paramsRequest[] = ['name'=>$name,'value'=>'a@a','type'=>$type];
                         }
                         elseif(strtolower($type) == 'password' || $name == 'password')
                         {
-                            $r->addParam($name, $word);
+                            $paramsRequest[] = ['name'=>'contraseña','value'=>$word,'type'=>$type];
                         }
                         else
                         {
-                            $r->addParam($name, 'admin');
+                            $paramsRequest[] = ['name'=>$name,'value'=>'admin','type'=>$type];
                         }
                     }
                 }
-                $responses = $r->doPostRequests();
+                $urls[] = ['url'=>$action,'params'=>$paramsRequest];
+            }
 
-                foreach($responses as $response)
+            $r = new Request([$action]);
+            $responses = $r->doPostRequests($urls);
+            foreach($responses as $response)
+            {                
+                $params = $response['params'];
+                if($response['http_code'] == 302)
                 {
-                    $headers = $response['headers'];
-                    foreach ($headers as $param => $value)
-                        echo "<strong>$param : </strong>".$value."<br>";
-                    $html = $response['html'];
-                    echo "<br><strong>Response: </strong><br>";
-                    echo $response['http_code']."<br>";
+                    echo "PASSWORD FOUND!";
+                    foreach($params as $p)
+                    {
+                        echo $p."<br>";
+                    }
                 }
             }
         }
@@ -93,9 +101,8 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
         {
             $domain = $_POST['domain'];
             if(!filter_var($domain, FILTER_VALIDATE_URL))
-            {
-                die("URL INVALIDA!");
-            }
+                die("<strong style='color:red'>URL INVALIDA!!!</strong>");
+
             $extension = pathinfo(parse_url($domain)['path'], PATHINFO_EXTENSION);
             //echo $extension;
             //echo "<pre>";print_r(parse_url($domain));

@@ -15,10 +15,21 @@ class Domain
     login.php, noticias.php...
      */
     private $pages;
-
+    /*
+    HTML comments
+     */
     private $comments;
+    /*
+    HTML forms of the page
+     */
     private $forms;
+    /*
+    HTTP responses foreach page
+     */
     private $responses;
+    /*
+    Final results about the scan
+     */
     private $data;
 
     public function __construct($url)
@@ -29,9 +40,16 @@ class Domain
         $this->comments = array();
         $this->forms = array();
         $this->data = array();
-        $this->host = parse_url($this->url)['scheme']."://".parse_url($this->url)['host']."/";
+        $parser = parse_url($this->url);
+        if(isset($parser['port']))
+            $this->host = $parser['scheme']."://".$parser['host'].":".$parser['port']."/";
+        else
+            $this->host = $parser['scheme']."://".$parser['host']."/";
     }
 
+    /*
+
+     */
     public function getDataScan()
     {
         $data = array();
@@ -88,6 +106,7 @@ class Domain
         {
             $pathLink = parse_url($response['url'])['scheme']."://".parse_url($response['url'])['host'].parse_url($response['url'])['path'];
             $enlace = $link->getAttribute('href');
+            $extension = pathinfo(parse_url($enlace)['path'], PATHINFO_EXTENSION);
             //echo $enlace."<br>";
             $isMailLink = substr($enlace, 0, 7) == 'mailto:';
             /*
@@ -95,7 +114,7 @@ class Domain
             ex:http://mipage.com/1#whatever
              */
             $isSamePage = substr($enlace, 0, 1) == '#';
-            //IF THE ROUTE IS RELATIVE...
+            //IF THE ROUTE IS RELATIVE CONVERT IT TO ABSOLUTE
             if(!self::is_absolute($enlace))
             {
                 if(substr($enlace, 0, 2) == '//')
@@ -112,21 +131,23 @@ class Domain
                     $enlace = $response['url'].substr($enlace, 2);
                 elseif(substr($enlace, 0, 1) == '?')
                 {
-                    echo $pathLink."<BR>";
+                    //echo $pathLink."<BR>";
                     $enlace = $pathLink.$enlace;
+                }
+                elseif($extension != "")
+                {
+                    $enlace = $this->host.$enlace;
                 }
                 else
                     $enlace = $this->url.$enlace;
             }
-
-            //print_r(parse_url($enlace));
+            //print_r(parse_url($this->url));
             //echo $enlace."<br>";
             $protocol = parse_url($enlace)['scheme'];
             $host = parse_url($enlace)['host'];
             //SI ES UN ENLACE DEL MISMO DOMINIO...
             if(!$isMailLink && !in_array($enlace, $this->pages) && strpos($protocol."://".$host, parse_url($this->host)['host']) !== false && !$isSamePage)
             {
-                //echo "<h2>$enlace</h2><br>";
                 self::addPage($enlace);
             }
         }
@@ -139,7 +160,7 @@ class Domain
             $headers = $response['headers'];
             //echo $response['url']." - ".$response['http_code']."<br>";
             $html = $response['html'];
-            //echo $response['url']."ALLA: ".$html;
+            //IF PAGE EXISTS...
             if($response['http_code'] == 200)
             {
                 $dom = new DomDocument();
@@ -152,11 +173,11 @@ class Domain
                     $isMailLink = substr($enlace, 0, 7) == 'mailto:';
                     /*
                     Prevent from adding the same page because  of #
-                    ex:http://mipage.com/1#
+                    ex:http://mipage.com/1#top
                      */
                     $isSamePage = substr($enlace,0,1) == '#';
                     //echo $enlace."<br>";
-                    //IF THE ROUTE IS RELATIVE...
+                    //IF THE ROUTE IS RELATIVE CONVERT IT TO ABSOLUTE
                     if(!self::is_absolute($enlace))
                     {
                         if(substr($enlace, 0, 2) == '//')
@@ -173,17 +194,13 @@ class Domain
                             $enlace = $response['url'].substr($enlace, 2);
                         elseif(substr($enlace, 0, 1) == '?')
                         {
-                            //echo "<h2>$enlace</h2>";
-                            //print_r(parse_url($response['url']));
                             $path = parse_url($response['url'])['path'];
-                            //echo $this->host." . ".$path."<br>";
                             $enlace = $this->host.$path.$enlace;
                             //echo "RES::".$enlace."<br>";
                         }
                         else
                         {
                             $enlace = $this->host.$enlace;
-                            //echo $pathLink."<BR>";
                         }
                     }
 
@@ -199,7 +216,6 @@ class Domain
                         //SI ES UN ENLACE DEL MISMO DOMINIO...
                         if(strpos($urlLink, $urlDomain) !== false)
                         {
-                            //echo $enlace." - ".$response['http_code']."<br>";
                             self::addPage($enlace);
                         }
                     }
@@ -215,14 +231,13 @@ class Domain
 
         foreach($responses as $response)
         {
-            //echo $response['url']."<br>";
             $this->comments = [];
             $headers = $response['headers'];
             $html = $response['html'];
             $dom = new DomDocument();
             $dom->loadHTML($html);
             self::showDOMNode($dom);
-            //GET FORMUS
+            //GET FORMS
             $this->forms = [];
             $forms = $dom->getElementsByTagName('form');
             foreach($forms as $f)
@@ -285,7 +300,7 @@ class Domain
                     $comment = trim(htmlspecialchars($c));
                     if($comment != "")
                     {
-                        $result .= "<br><div style='margin-left:30px'><h5><strong><span style='color:#e68a00;'>[ * ]</span>Comment: </strong></h5><br><br>";
+                        $result .= "<br><div style='margin-left:30px'><h5><strong><span style='color:#e68a00;'>[ * ]</span>Comment: </strong></h5><br>";
                         $result .= "".$comment."</div><br>";
                     }
                 }
@@ -300,9 +315,6 @@ class Domain
      */
     public function getParsedForms($url)
     {
-        $list = file_get_contents('dics/rockyou.txt');
-        $words = explode("\n" , $list);
-        $i = 0;
         $result = "";
         foreach($this->data as $data)
         {
@@ -312,37 +324,69 @@ class Domain
             {
                 foreach ($forms as $f)
                 {
-                    $action = $url;
+                    $onSubmit = $f->getAttribute('onsubmit');
+                    $actionAttr = $f->getAttribute('action');
+                    if($actionAttr == "")
+                        $action = $url;
+                    else
+                        $action = $actionAttr;
+                    if(!self::is_absolute($action))
+                    {
+                        if(substr($action, 0, 2) == '//')
+                        {
+                            $protocol = parse_url($this->host)['scheme'];
+                            $action = $protocol.":".$action;
+                        }
+                        //IS THE LINK IN THE ROOT DIRECTORY ?
+                        elseif(substr($action, 0, 1) == '/')
+                            $action = $this->host.substr($action,1);
+                        elseif(substr($action, 0, 3) == '../')
+                            $action = '';
+                        elseif(substr($action, 0, 2) == './')
+                            $action = $response['url'].substr($action, 2);
+                        else
+                        {
+                            $extension = pathinfo(parse_url($url)['path'], PATHINFO_EXTENSION);
+                            if($extension == "")
+                                $action = $url.$action;
+                            else
+                                $action = $url;
+                        }
+                    }
+                    //
                     $result .= "<div name='forms' class='center-text' style='margin-left:30px'>";
-                    $result .= "<h5><strong><span style='color:#e68a00'>[ * ]</span>Form: </strong></h5><br><br>";
+                    $result .= "<h5><strong><span style='color:#e68a00'>[ * ]</span>Form: </strong></h5><br>";
                     $result .= "<div style='margin-left:40px;'><strong>action: </strong>".$action."<br>";
                     $result .= "<strong>method: </strong>".$f->getAttribute('method')."<br>";
+                    if($onSubmit != "")
+                        $result .= "<strong>onSubmit: </strong>".$onSubmit."<br>";
                     $params = [];
                     foreach($f->getElementsByTagName('input') as $input)
                     {
                         $result .= "<strong><span style='color:red'> * </span>input: </strong><br>";
                         $name = $input->getAttribute('name');
                         $type = $input->getAttribute('type');
+                        //echo $type;
                         $value = $input->getAttribute('value');
                         $result .= $name.": ".$type;
                         if($value != "")
                         {
                             $result .= " => ".$value;
-                            $params[] = ['name'=>$name, 'value'=>$value];
+                            $params[] = ['name'=>$name, 'value'=>$value,'type'=>$type];
                         }
                         else
                         {
                             if($name == 'mail' || $type == "email" || $name =="email")
                             {
-                                $params[] = ['name'=>$name, 'value'=>'a@a.com'];
+                                $params[] = ['name'=>$name, 'value'=>'a@a','type'=>$type];
                             }
                             elseif($type == 'password')
                             {
-                                $params[] = ['name'=>$name, 'value'=>$words[$i]];
+                                $params[] = ['name'=>'contraseña','type'=>$type];
                             }
                             else
                             {
-                                $params[] = ['name'=>$name, 'value'=>'admin'];
+                                $params[] = ['name'=>$name, 'value'=>'admin','type'=>$type];
                             }
                         }
                         $result .= "<br>";
