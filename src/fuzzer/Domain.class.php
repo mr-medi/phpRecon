@@ -36,7 +36,7 @@ class Domain
     {
         $this->url = $url;
         $this->pages = array();
-        $this->responses = '';
+        $this->responses = array();
         $this->comments = array();
         $this->forms = array();
         $this->data = array();
@@ -52,8 +52,8 @@ class Domain
      */
     public function getDataScan()
     {
-        $data = array();
         //OBTIENE TODOS LOS LINKS DE LA PAGINA PRINCIPAL Y DEL MISMO DOMINIO
+        //self::crawl_page($this->url);
         self::getLinks();
         //self::getPublicInfo();
         //OBTIENE TODOS LOS COMENTARIOS Y FORMUS HTML DE CADA PAGINA
@@ -85,16 +85,18 @@ class Domain
             if(strpos($this->url,substr($enlace,0))!==false)
                 self::addPage($enlace);
         }
-    }
+    }    
 
+    //
     public function getLinks()
     {
         $r = new Request([$this->url]);
-        $this->responses = $r->doGetRequests();
+        $res = $r->doGetRequests();
         self::addPage($this->url);
 
-        foreach($this->responses as $response)
+        foreach($res as $response)
         {
+            //$this->responses[] = $response;
             $headers = $response['headers'];
             $html = $response['html'];
         }
@@ -116,33 +118,8 @@ class Domain
             $isSamePage = substr($enlace, 0, 1) == '#';
             //IF THE ROUTE IS RELATIVE CONVERT IT TO ABSOLUTE
             if(!self::is_absolute($enlace))
-            {
-                if(substr($enlace, 0, 2) == '//')
-                {
-                    $protocol = parse_url($this->host)['scheme'];
-                    $enlace = $protocol.":".$enlace;
-                }
-                //IS THE LINK IN THE ROOT DIRECTORY ?
-                elseif(substr($enlace, 0, 1) == '/')
-                    $enlace = $this->host.substr($enlace,1);
-                elseif(substr($enlace, 0, 3) == '../')
-                    $enlace = '';
-                elseif(substr($enlace, 0, 2) == './')
-                    $enlace = $response['url'].substr($enlace, 2);
-                elseif(substr($enlace, 0, 1) == '?')
-                {
-                    //echo $pathLink."<BR>";
-                    $enlace = $pathLink.$enlace;
-                }
-                elseif($extension != "")
-                {
-                    $enlace = $this->host.$enlace;
-                }
-                else
-                    $enlace = $this->url.$enlace;
-            }
-            //print_r(parse_url($this->url));
-            //echo $enlace."<br>";
+                $enlace = self::getAbsoutePath($enlace, $response['url'], $extension);
+
             $protocol = parse_url($enlace)['scheme'];
             $host = parse_url($enlace)['host'];
             //SI ES UN ENLACE DEL MISMO DOMINIO...
@@ -157,79 +134,82 @@ class Domain
 
         foreach($responses as $response)
         {
+            $this->responses[] = $response;
             $headers = $response['headers'];
-            //echo $response['url']." - ".$response['http_code']."<br>";
             $html = $response['html'];
-            //IF PAGE EXISTS...
-            if($response['http_code'] == 200)
+            $dom = new DomDocument();
+            $dom->loadHTML($html);
+            $links = $dom->getElementsByTagName('a');
+
+            foreach($links as $link)
             {
-                $dom = new DomDocument();
-                $dom->loadHTML($html);
-                $links = $dom->getElementsByTagName('a');
-                foreach($links as $link)
+                $pathLink = parse_url($response['url'])['scheme']."://".parse_url($response['url'])['host'].parse_url($response['url'])['path'];
+                $enlace = ltrim($link->getAttribute('href'), '/');
+                $extension = pathinfo(parse_url($enlace)['path'], PATHINFO_EXTENSION);
+                $isMailLink = substr($enlace, 0, 7) == 'mailto:';
+                /*
+                Prevent from adding the same page because  of #
+                ex:http://mipage.com/1#top
+                 */
+                $isSamePage = substr($enlace,0,1) == '#';
+                //IF THE ROUTE IS RELATIVE CONVERT IT TO ABSOLUTE
+                if(!self::is_absolute($enlace))
+                    $enlace = self::getAbsoutePath($enlace, $response['url'], $extension);
+
+                if(!in_array($enlace, $this->pages) && !$isSamePage && !$isMailLink)
                 {
-                    $pathLink = parse_url($response['url'])['scheme']."://".parse_url($response['url'])['host'].parse_url($response['url'])['path'];
-                    $enlace = $link->getAttribute('href');
-                    $isMailLink = substr($enlace, 0, 7) == 'mailto:';
-                    /*
-                    Prevent from adding the same page because  of #
-                    ex:http://mipage.com/1#top
-                     */
-                    $isSamePage = substr($enlace,0,1) == '#';
-                    //echo $enlace."<br>";
-                    //IF THE ROUTE IS RELATIVE CONVERT IT TO ABSOLUTE
-                    if(!self::is_absolute($enlace))
+                    $protocol = parse_url($enlace)['scheme'];
+                    $host = parse_url($enlace)['host'];
+                    $urlLink = $protocol."://".$host;
+                    $urlDomain = parse_url($this->host)['scheme']."://".parse_url($this->host)['host'];
+                    //SI ES UN ENLACE DEL MISMO DOMINIO...
+                    if(strpos($urlLink, $urlDomain) !== false)
                     {
-                        if(substr($enlace, 0, 2) == '//')
-                        {
-                            $protocol = parse_url($this->host)['scheme'];
-                            $enlace = $protocol.":".$enlace;
-                        }
-                        //IS THE LINK IN THE ROOT DIRECTORY ?
-                        elseif(substr($enlace, 0, 1) == '/')
-                            $enlace = $this->host.substr($enlace,1);
-                        elseif(substr($enlace, 0, 3) == '../')
-                            $enlace = '';
-                        elseif(substr($enlace, 0, 2) == './')
-                            $enlace = $response['url'].substr($enlace, 2);
-                        elseif(substr($enlace, 0, 1) == '?')
-                        {
-                            $path = parse_url($response['url'])['path'];
-                            $enlace = $this->host.$path.$enlace;
-                            //echo "RES::".$enlace."<br>";
-                        }
-                        else
-                        {
-                            $enlace = $this->host.$enlace;
-                        }
-                    }
-
-
-                    if(!in_array($enlace, $this->pages) && !$isSamePage && !$isMailLink)
-                    {
-                        //echo $enlace." - ".$response['url']."<br>";
-                        $protocol = parse_url($enlace)['scheme'];
-                        $host = parse_url($enlace)['host'];
-                        $urlLink = $protocol."://".$host;
-                        $urlDomain = parse_url($this->host)['scheme']."://".parse_url($this->host)['host'];
-                        //echo $urlLink." - ".$urlDomain."<strong>".var_dump($isOk)."</strong><br>";
-                        //SI ES UN ENLACE DEL MISMO DOMINIO...
-                        if(strpos($urlLink, $urlDomain) !== false)
-                        {
-                            self::addPage($enlace);
-                        }
+                        self::addPage($enlace);
                     }
                 }
             }
         }
     }
 
+    public function getAbsoutePath($link, $fullURL, $extension)
+    {
+        if(substr($link, 0, 2) == '//')
+        {
+            $protocol = parse_url($this->host)['scheme'];
+            $link = $protocol.":".$link;
+        }
+        //IS THE LINK IN THE ROOT DIRECTORY ?
+        elseif(substr($link, 0, 1) == '/')
+            $link = $this->host.substr($link,1);
+        elseif(substr($link, 0, 3) == '../')
+            $link = '';
+        elseif(substr($link, 0, 2) == './')
+            $link = $fullURL.substr($link, 2);
+        elseif(substr($link, 0, 1) == '?')
+        {
+            $path = parse_url($fullURL)['path'];
+            $link = $this->host.$path.$link;
+        }
+        elseif($extension != "")
+        {
+            $uri =  parse_url($fullURL, PHP_URL_PATH);
+            $pathUrl = ltrim(pathinfo($uri)['dirname'], '/');
+            $link = $this->host.$pathUrl."/".$link;
+        }
+        else
+        {
+            $link = $this->host.$link;
+        }
+        return $link;
+    }
+
     public function getComments()
     {
         $r = new Request($this->pages);
         $responses = $r->doGetRequests();
-
         foreach($responses as $response)
+        //foreach($this->responses as $response)
         {
             $this->comments = [];
             $headers = $response['headers'];
