@@ -149,6 +149,7 @@ class Domain
         foreach($responses as $response)
         {
             //$this->responses[] = $response;
+            $this->responses[] = $response;
             $headers = $response['headers'];
             $html = $response['html'];
             $dom = new DomDocument();
@@ -222,7 +223,6 @@ class Domain
     {
         $r = new Request($this->pages);
         $responses = $r->doGetRequests();
-
         foreach($responses as $response)
         //foreach($this->responses as $response)
         {
