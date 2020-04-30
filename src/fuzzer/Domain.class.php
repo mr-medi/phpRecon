@@ -58,7 +58,21 @@ class Domain
         //self::getPublicInfo();
         //OBTIENE TODOS LOS COMENTARIOS Y FORMUS HTML DE CADA PAGINA
         self::getComments();
-        return $this->data;
+        return $this->data;//////////
+    }
+
+    public function getRobotsFile()
+    {
+        $r = new Request([$this->host."robots.txt"]);
+        $responses = $r->doGetRequests();
+
+        foreach($responses as $response)
+        {
+            $html = $response['html'];
+            $httpCode = $response['http_code'];
+        }
+        $format = "<br><h2><span style='color:blue'>[ - ]</span> robots.txt Found</h2><br>";
+        return $httpCode == 200 ? "$format<pre>".htmlspecialchars($html)."</pre><br>" : 'robots.txt not found...';
     }
 
     public function getPublicInfo()
@@ -85,7 +99,7 @@ class Domain
             if(strpos($this->url,substr($enlace,0))!==false)
                 self::addPage($enlace);
         }
-    }    
+    }
 
     //
     public function getLinks()
@@ -134,7 +148,7 @@ class Domain
 
         foreach($responses as $response)
         {
-            $this->responses[] = $response;
+            //$this->responses[] = $response;
             $headers = $response['headers'];
             $html = $response['html'];
             $dom = new DomDocument();
@@ -208,6 +222,7 @@ class Domain
     {
         $r = new Request($this->pages);
         $responses = $r->doGetRequests();
+
         foreach($responses as $response)
         //foreach($this->responses as $response)
         {
@@ -221,9 +236,8 @@ class Domain
             $this->forms = [];
             $forms = $dom->getElementsByTagName('form');
             foreach($forms as $f)
-            {
                 $this->forms[] = $f;
-            }
+
             $this->data[] =
             ['url'=>$response['url'],
             'comments'=>$this->comments,
@@ -384,6 +398,25 @@ class Domain
                     }
                     $result .= "</div><br>";
                 }
+            }
+        }
+        return $result;
+    }
+
+    public function getParsedHeaders($url)
+    {
+        $result = "";
+        foreach($this->data as $data)
+        {
+            $urlIterator = $data['url'];
+            $headers = $data['headers'];
+            if($url == $urlIterator)
+            {
+                $result .= "<div name='header' class='center-text'>";
+                $result .= "<h3><strong><span style='color:green'>[ + ]</span>Headers: </strong></h3><br><br>";
+                foreach ($headers as $header => $value)
+                    $result .= "<strong style='margin-left:30px'>".$header.": </strong>".$value."<br>";
+                $result .= "</div>";
             }
         }
         return $result;

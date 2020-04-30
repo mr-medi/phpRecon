@@ -63,8 +63,7 @@ class Request
               $header = self::getHeaders($header);
               // extract body
               $body = substr($output, $headerSize);
-
-              $dataURLS[] = ['url'=>$info['url'],'html'=>$output,'headers'=>$header,'http_code'=>$info['http_code']];
+              $dataURLS[] = ['url'=>$info['url'],'html'=>$body,'headers'=>$header,'http_code'=>$info['http_code']];
               // remove the curl handle that just completed
               curl_multi_remove_handle($master, $done['handle']);
           }
@@ -81,12 +80,12 @@ class Request
         $master = curl_multi_init();
         $curl_arr = array();
         $std_options = array(
-            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_POST => 1,
             CURLOPT_VERBOSE => 1,
             CURLOPT_HEADER => 1,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_MAXREDIRS => 20,
+            CURLOPT_MAXREDIRS => 1,
             CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.83 Safari/537.1');
         $options = $std_options;
         for ($i = 0; $i < $rolling_window; $i++)
@@ -96,7 +95,6 @@ class Request
             foreach ($urls[$i]['params'] as $p)
                 $params .= $p['name'].'='.$p['value'].'&';
             $params = rtrim($params, '&');
-            //echo $params."<br>";
             $ch = curl_init();
             $options[CURLOPT_URL] = $url;
             $options[CURLOPT_POSTFIELDS] = $params;
@@ -128,7 +126,6 @@ class Request
                   curl_multi_add_handle($master, $ch);
               }
               $headerSize = curl_getinfo($done['handle'], CURLINFO_HEADER_SIZE);
-              //echo $headerSize;
               $header = substr($output, 0, $headerSize);
               $header = self::getHeaders($header);
               //extract body

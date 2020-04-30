@@ -14,26 +14,26 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
         <title>Recon</title>
     </head>
     <body>
-     <!--Definiendo el header -->
-      <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
-        <header class="masthead mb-auto">
-          <div class="inner">
-            <nav class="nav nav-masthead justify-content-center">
-              <button class="nav-link active" id="index">Index</button>
-              <button class="nav-link" id ='comment' >Comments</button>
-              <button class="nav-link" id='form'>Forms</button>
-              <button class="nav-link" id='header'>Headers</button>
-              <button class="nav-link" id='bruter'>Bruter</button>
-            </nav>
-          </div>
-        </header>
-        <!--Fin header -->
-        <form action="" method="POST">
-            <h2 class="text-center2">Domain:</h2>
-            <input type="text" class="input-center" placeholder="https://www.google.com" name="domain" autofocus><br>
-            <input type="submit" name="enviar" class="text-center2">
-        </form>
-        </div>
+        <!--Definiendo el header -->
+         <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+           <header class="masthead mb-auto">
+             <div class="inner">
+               <nav class="nav nav-masthead justify-content-center">
+                 <button class="nav-link active" id="index">Index</button>
+                 <button class="nav-link" id ='comment' >Comments</button>
+                 <button class="nav-link" id='form'>Forms</button>
+                 <button class="nav-link" id='header'>Headers</button>
+                 <button class="nav-link" id='bruter'>Bruter</button>
+               </nav>
+             </div>
+           </header>
+           <!--Fin header -->
+           <form action="" method="POST">
+               <h2 class="text-center2">Domain:</h2>
+               <input type="text" class="input-center" placeholder="https://www.google.com" name="domain" autofocus><br>
+               <input type="submit" name="enviar" class="text-center2">
+           </form>
+         </div>
         <?php
         set_time_limit(0);
         //
@@ -84,15 +84,14 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
             $r = new Request([$action]);
             $responses = $r->doPostRequests($urls);
             foreach($responses as $response)
-            {                
+            {
                 $params = $response['params'];
+                echo $response['http_code'];
+                echo "<br>";
                 if($response['http_code'] == 302)
                 {
                     echo "PASSWORD FOUND!";
-                    foreach($params as $p)
-                    {
-                        echo $p."<br>";
-                    }
+                    print_r($params);
                 }
             }
         }
@@ -121,21 +120,21 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
             echo "<p>Resultados obtenidos en <strong>".$execution_time."</strong> segundos....</p><br>";
             echo "</div>";
             //FIN SCAN
+            //ROBOTS.TXT FILE
+            echo $domain->getRobotsFile();
+            //
             foreach($urls as $url)
             {
                 $page = $url['url'];
                 $totalComments = count($url['comments']);
                 $totalForms = count($url['forms']);
+                //INFO ABOUT REQUEST
                 echo "<div name='url'>";
                 echo "<span name='totalComments' style='display:none'>$totalComments</span>";
                 echo "<span name='totalForms' style='display:none'>$totalForms</span>";
                 echo "<br><br><h2><span style='color:blue'>[ - ]</span>".$page."</h2><br>";
                 //HEADERS
-                echo "<div name='header' class='center-text'>";
-                echo "<h3><strong><span style='color:green'>[ + ]</span>Headers: </strong></h3><br><br>";
-                foreach ($url['headers'] as $param => $value)
-                    echo "<strong style='margin-left:30px'>".$param.": </strong>".$value."<br>";
-                echo "</div>";
+                echo $domain->getParsedHeaders($page);
                 //COMMENTS
                 echo "<div name='comments' class='center-text'>";
                 echo $totalComments > 0 ? "<br><br><h3><strong><span style='color:green'>[ + ]</span>Comments: </strong></h3><br><br>":"";
