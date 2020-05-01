@@ -196,7 +196,7 @@ class Domain
         }
         //IS THE LINK IN THE ROOT DIRECTORY ?
         elseif(substr($link, 0, 1) == '/')
-            $link = $this->host.substr($link,1);
+            $link = $this->host.substr($link, 1);
         elseif(substr($link, 0, 3) == '../')
             $link = '';
         elseif(substr($link, 0, 2) == './')
@@ -204,7 +204,7 @@ class Domain
         elseif(substr($link, 0, 1) == '?')
         {
             $path = parse_url($fullURL)['path'];
-            $link = $this->host.$path.$link;
+            $link = $this->host.ltrim($path.$link, '/');
         }
         elseif($extension != "")
         {
@@ -214,7 +214,7 @@ class Domain
         }
         else
         {
-            $link = $this->host.$link;
+            $link = $this->host.ltrim($link, '/');
         }
         return $link;
     }
@@ -289,6 +289,10 @@ class Domain
             $comments = $data['comments'];
             if($url == $urlIterator)
             {
+                $totalComments = count($comments);
+                $result .= "<div name='comments' class='center-text'>";
+                $result .= $totalComments > 0 ? "<br><br><h3><strong><span style='color:green'>[ + ]</span>Comments: </strong></h3><br><br>":"";
+
                 foreach ($comments as $c)
                 {
                     $comment = trim(htmlspecialchars($c));
@@ -298,6 +302,7 @@ class Domain
                         $result .= "".$comment."</div><br>";
                     }
                 }
+                $result .= "</div>";
             }
         }
         return $result;
@@ -316,6 +321,9 @@ class Domain
             $forms = $data['forms'];
             if($url == $urlIterator)
             {
+                $totalForms = count($forms);
+                $result .= "<div name='forms' class='center-text'>";
+                $result .= $totalForms > 0 ? "<br><br><h3><strong><span style='color:green'>[ + ]</span>Forms: </strong></h3><br><br>":"";
                 foreach ($forms as $f)
                 {
                     $onSubmit = $f->getAttribute('onsubmit');
@@ -398,6 +406,7 @@ class Domain
                     }
                     $result .= "</div><br>";
                 }
+                $result .= "</div>";
             }
         }
         return $result;
@@ -418,6 +427,24 @@ class Domain
                     $result .= "<strong style='margin-left:30px'>".$header.": </strong>".$value."<br>";
                 $result .= "</div>";
             }
+        }
+        return $result;
+    }
+
+    public function getParsedDataScan()
+    {
+        $result = "";
+        foreach($this->data as $data)
+        {
+            $url = $data['url'];
+            $totalComments = count($data['comments']);
+            $totalForms = count($data['forms']);
+            $result .= "<div name='url'>";
+            $result .= "<span name='totalComments' style='display:none'>$totalComments</span>";
+            $result .= "<span name='totalForms' style='display:none'>$totalForms</span>";
+            $result .= "<br><br><h2><span style='color:blue'>[ - ]</span>".$url."</h2><br>";
+            $result .= self::getParsedHeaders($url).self::getParsedComments($url).self::getParsedForms($url);
+            $result .= "</div>";
         }
         return $result;
     }

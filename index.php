@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__."/src/fuzzer/Domain.class.php";
-//require_once __DIR__."/src/fuzzer/Page.class.php";
 require_once __DIR__."/src/fuzzer/Request.class.php";
 ?>
 <!DOCTYPE html>
@@ -30,12 +29,13 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
            <!--Fin header -->
            <form action="" method="POST">
                <h2 class="text-center2">Domain:</h2>
-               <input type="text" class="input-center" placeholder="https://www.google.com" name="domain" autofocus><br>
+               <input type="text" class="input-center" placeholder="https://www.mypage.com" name="domain" autofocus><br>
                <input type="submit" name="enviar" class="text-center2">
            </form>
          </div>
         <?php
         set_time_limit(0);
+
         //
         if(isset($_POST['bruter']))
         {
@@ -49,14 +49,12 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
 
             foreach($words as $word)
             {
-                //echo $word;
                 $paramsRequest = [];
                 foreach($params as $param)
                 {
                     $name = $param['name'];
                     $value = $param['value'];
                     $type = $param['type'];
-                    //echo "<strong>$name : </strong>$value<br>";
                     //ADDING PARAMS
                     if($value != "")
                     {
@@ -95,6 +93,7 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
                 }
             }
         }
+
         //
         if(isset($_POST['domain']) && isset($_POST['enviar']))
         {
@@ -103,8 +102,6 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
                 die("<strong style='color:red'>URL INVALIDA!!!</strong>");
 
             $extension = pathinfo(parse_url($domain)['path'], PATHINFO_EXTENSION);
-            //echo $extension;
-            //echo "<pre>";print_r(parse_url($domain));
             if($domain[strlen($domain)-1] != "/" && $extension == "")
                 $domain = $domain.'/';
             echo "<br><br><h2>Results for <strong>$domain: </strong></h2>";
@@ -119,33 +116,9 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
             echo "<p>Total enlaces encontrados  : <strong>". count($urls) ." </strong></p>";
             echo "<p>Resultados obtenidos en <strong>".$execution_time."</strong> segundos....</p><br>";
             echo "</div>";
-            //FIN SCAN
-            //ROBOTS.TXT FILE
+            //GETTING CONTENT OF ROBOTS.TXT FILE
             echo $domain->getRobotsFile();
-            //
-            foreach($urls as $url)
-            {
-                $page = $url['url'];
-                $totalComments = count($url['comments']);
-                $totalForms = count($url['forms']);
-                //INFO ABOUT REQUEST
-                echo "<div name='url'>";
-                echo "<span name='totalComments' style='display:none'>$totalComments</span>";
-                echo "<span name='totalForms' style='display:none'>$totalForms</span>";
-                echo "<br><br><h2><span style='color:blue'>[ - ]</span>".$page."</h2><br>";
-                //HEADERS
-                echo $domain->getParsedHeaders($page);
-                //COMMENTS
-                echo "<div name='comments' class='center-text'>";
-                echo $totalComments > 0 ? "<br><br><h3><strong><span style='color:green'>[ + ]</span>Comments: </strong></h3><br><br>":"";
-                echo $domain->getParsedComments($page);
-                echo "</div><br>";
-                //FORMS
-                echo "<div name='forms' class='center-text'>";
-                echo $totalForms > 0 ? "<br><br><h3><strong><span style='color:green'>[ + ]</span>Forms: </strong></h3><br><br>":"";
-                echo $domain->getParsedForms($page);
-                echo "</div></div>";
-            }
+            echo $domain->getParsedDataScan();
         }
         ?>
     </body>
