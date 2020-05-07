@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__."/src/fuzzer/Domain.class.php";
 require_once __DIR__."/src/fuzzer/Request.class.php";
+require_once __DIR__."/src/fuzzer/Url.class.php";
 ?>
 <!DOCTYPE html>
 <html>
@@ -29,78 +30,40 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
            <!--Fin header -->
            <form action="" method="POST">
                <h2 class="text-center2">Domain:</h2>
-               <input type="text" class="input-center" placeholder="https://www.mypage.com" name="domain" autofocus><br>
+               <input type="text" class="input-center" placeholder="http://www.mypage.com" name="domain" autofocus><br>
                <input type="submit" name="enviar" class="text-center2">
            </form>
          </div>
         <?php
         set_time_limit(0);
-
         //
         if(isset($_POST['bruter']))
         {
             $list = file_get_contents('dics/rockyou.txt');
             $words = explode("\n" , $list);
-            $action = $_POST['action'];
+            $action = htmlspecialchars($_POST['action']);
             $method = 'POST';
             $params = json_decode($_POST['params'], true);
-            $i = 0;
-            $urls = [];
-
-            foreach($words as $word)
-            {
-                $paramsRequest = [];
-                foreach($params as $param)
-                {
-                    $name = $param['name'];
-                    $value = $param['value'];
-                    $type = $param['type'];
-                    //ADDING PARAMS
-                    if($value != "")
-                    {
-                        $paramsRequest[] = ['name'=>$name,'value'=>$value,'type'=>$type];
-                    }
-                    else
-                    {
-                        if($name == 'mail' || $type == "email" || $name =="email")
-                        {
-                            $paramsRequest[] = ['name'=>$name,'value'=>'a@a','type'=>$type];
-                        }
-                        elseif(strtolower($type) == 'password' || $name == 'password')
-                        {
-                            $paramsRequest[] = ['name'=>'contraseña','value'=>$word,'type'=>$type];
-                        }
-                        else
-                        {
-                            $paramsRequest[] = ['name'=>$name,'value'=>'admin','type'=>$type];
-                        }
-                    }
-                }
-                $urls[] = ['url'=>$action,'params'=>$paramsRequest];
-            }
-
-            $r = new Request([$action]);
-            $responses = $r->doPostRequests($urls);
-            foreach($responses as $response)
-            {
-                $params = $response['params'];
-                echo $response['http_code'];
-                echo "<br>";
-                if($response['http_code'] == 302)
-                {
-                    echo "PASSWORD FOUND!";
-                    print_r($params);
-                }
-            }
+            echo Request::doBruter($words, $params, $action);
         }
 
         //
         if(isset($_POST['domain']) && isset($_POST['enviar']))
         {
-            $domain = $_POST['domain'];
+            $domain = htmlspecialchars($_POST['domain']);
+            //IF THE URL NOT OK, EXIT THE PROGRAM FLOW
             if(!filter_var($domain, FILTER_VALIDATE_URL))
                 die("<strong style='color:red'>URL INVALIDA!!!</strong>");
 
+            /*
+            IF THE URL HAVE A EXTENSION WE DONT ADD '/' AT THE
+             END OF THE USER INPUT URL.
+             Ex: $domain = http://mypage.com
+                 => expected output: $domain = http://mypage.com/
+                 but if
+                 $domain = http://mypage.com/index.php
+                     => expected output: $domain = http://mypage.com/index.php
+             */
             $extension = pathinfo(parse_url($domain)['path'], PATHINFO_EXTENSION);
             if($domain[strlen($domain)-1] != "/" && $extension == "")
                 $domain = $domain.'/';
@@ -110,6 +73,7 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
             $urls = $domain->getDataScan();
             $end_time = microtime(true);
             $execution_time = ($end_time - $start_time);
+            //GETTING OUTPUT OF GOOGLE DORKS
             //$domain->getPublicInfo();
             //INFO SCAN
             echo "<div id='resume'>";
@@ -118,6 +82,7 @@ require_once __DIR__."/src/fuzzer/Request.class.php";
             echo "</div>";
             //GETTING CONTENT OF ROBOTS.TXT FILE
             echo $domain->getRobotsFile();
+            //GETTING OUTPUT OF THE SCAN
             echo $domain->getParsedDataScan();
         }
         ?>

@@ -1,14 +1,14 @@
 # phpRecon
 
-Collect information about a domain like HTML comments to get a possible hidden functionality, additional information about the backend, vulnerable forms and use it to plan a attack vector
+Collect information about a domain like HTML comments to get a possible hidden functionality, additional information about the backend, vulnerable forms, HTTP headers and use it to plan a attack vector
 
 ## Running the tests
 
 ``` php
 <?php
-			$domain = new Domain('http://mypage.com');            
-			echo $domain->getRobotsFile();
-            echo $domain->getParsedDataScan();
+		$domain = new Domain('http://mypage.com');            
+		echo $domain->getRobotsFile();
+        echo $domain->getParsedDataScan();
 
 ```
 
@@ -24,7 +24,8 @@ This url has a link:
 "http://mypage.com/login".
 In turn, the login page has the link "http://mypage.com/register" which will be saved correctly in our array but if this URL contains "http://mypage.com/forgot-password" we will not get it anymore that more than two layers will have passed from the entered URL.
 
-Finally, we iterate through each URL in the generated array and save all the HTML comments and forms on each page.
+Finally, we iterate through each URL in the generated array and save all the HTML comments, forms, HTTP headers on each page and
+ retrieve the robots.txt file.
 
 ## Authors
 

