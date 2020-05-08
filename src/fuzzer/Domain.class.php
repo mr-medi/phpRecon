@@ -1,36 +1,51 @@
 <?php
 class Domain
 {
-    /*
-    URL de la pagina principal del dominio,
-    alude al fichero index
+    /**
+    *URL from user input
+    *Ex: http://mypage.com/login.php
+    *@var string
      */
     private $url;
-    /*
 
+    /**
+    *Host of the URL
+    *Ex: http://mypage.com/
+    *@var string
      */
     private $host;
-    /*
-    Un dominio tiene paginas asociadas, por ejemplo:
-    login.php, noticias.php...
+
+    /**
+    *Un dominio tiene paginas asociadas, por ejemplo:
+    *login.php, noticias.php...
+    *@var array
      */
     private $pages;
-    /*
-    HTML comments
+
+    /**
+    *HTML comments foreach page
+    *@var array
      */
     private $comments;
-    /*
-    HTML forms of the page
+
+    /**
+    *HTML forms foreach page
+    *@var array
      */
     private $forms;
-    /*
-    HTTP responses foreach page
+
+    /**
+    *HTTP responses foreach page
+    *@var array
      */
     private $responses;
-    /*
-    Final results about the scan
+
+    /**
+    *Final results about the scan
+    *@var array
      */
     private $data;
+
 
     public function __construct($url)
     {
@@ -53,14 +68,17 @@ class Domain
     public function getDataScan()
     {
         //OBTIENE TODOS LOS LINKS DE LA PAGINA PRINCIPAL Y DEL MISMO DOMINIO
-        //self::crawl_page($this->url);
         self::getLinks();
         //self::getPublicInfo();
         //OBTIENE TODOS LOS COMENTARIOS Y FORMUS HTML DE CADA PAGINA
         self::getComments();
-        return $this->data;//////////
+        return $this->data;
     }
 
+    /*
+    Do a GET request to the robots.txt file on the domain  given.
+    Ex: http://mypage.com/robots.txt
+     */
     public function getRobotsFile()
     {
         $r = new Request([$this->host."robots.txt"]);
@@ -75,6 +93,10 @@ class Domain
         return $httpCode == 200 ? "$format<pre>".htmlspecialchars($html)."</pre><br>" : 'robots.txt not found...';
     }
 
+    /*
+    Do a Google dork search using the 'site:' dork.
+    Ex: site:mydomain.com
+     */
     public function getPublicInfo()
     {
         $domain = parse_url($this->url)['host'];
@@ -101,7 +123,9 @@ class Domain
         }
     }
 
-    //
+    /*
+
+     */
     public function getLinks()
     {
         $r = new Request([$this->url]);
@@ -111,6 +135,7 @@ class Domain
         foreach($res as $response)
         {
             //$this->responses[] = $response;
+            $url = $response['url'];
             $headers = $response['headers'];
             $html = $response['html'];
         }
@@ -131,8 +156,8 @@ class Domain
              */
             $isSamePage = substr($enlace, 0, 1) == '#';
             //IF THE ROUTE IS RELATIVE CONVERT IT TO ABSOLUTE
-            if(!self::is_absolute($enlace))
-                $enlace = self::getAbsoutePath($enlace, $response['url'], $extension);
+            if(!Url::is_absolute($enlace))
+                $enlace = self::getAbsoutePath($enlace, $url, $extension);
 
             $protocol = parse_url($enlace)['scheme'];
             $host = parse_url($enlace)['host'];
@@ -165,10 +190,10 @@ class Domain
                 /*
                 Prevent from adding the same page because  of #
                 ex:http://mipage.com/1#top
-                 */
+                */
                 $isSamePage = substr($enlace,0,1) == '#';
                 //IF THE ROUTE IS RELATIVE CONVERT IT TO ABSOLUTE
-                if(!self::is_absolute($enlace))
+                if(!Url::is_absolute($enlace))
                     $enlace = self::getAbsoutePath($enlace, $response['url'], $extension);
 
                 if(!in_array($enlace, $this->pages) && !$isSamePage && !$isMailLink)
@@ -189,60 +214,49 @@ class Domain
 
     public function getAbsoutePath($link, $fullURL, $extension)
     {
-        if(substr($link, 0, 2) == '//')
-        {
-            $protocol = parse_url($this->host)['scheme'];
-            $link = $protocol.":".$link;
-        }
-        //IS THE LINK IN THE ROOT DIRECTORY ?
-        elseif(substr($link, 0, 1) == '/')
-            $link = $this->host.substr($link, 1);
-        elseif(substr($link, 0, 3) == '../')
-            $link = '';
-        elseif(substr($link, 0, 2) == './')
-            $link = $fullURL.substr($link, 2);
-        elseif(substr($link, 0, 1) == '?')
-        {
-            $path = parse_url($fullURL)['path'];
-            $link = $this->host.ltrim($path.$link, '/');
-        }
-        elseif($extension != "")
-        {
-            $uri =  parse_url($fullURL, PHP_URL_PATH);
-            $pathUrl = ltrim(pathinfo($uri)['dirname'], '/');
-            $link = $this->host.$pathUrl."/".$link;
-        }
-        else
-        {
-            $link = $this->host.ltrim($link, '/');
-        }
-        return $link;
+       return Url::parse($fullURL)->join($link);
     }
 
+    /*
+    Get all HTML comments,forms,headers of all the links.
+     */
     public function getComments()
     {
+        $urlBuffer = [];
         $r = new Request($this->pages);
         $responses = $r->doGetRequests();
         foreach($responses as $response)
-        //foreach($this->responses as $response)
         {
-            $this->comments = [];
-            $headers = $response['headers'];
-            $html = $response['html'];
-            $dom = new DomDocument();
-            $dom->loadHTML($html);
-            self::showDOMNode($dom);
-            //GET FORMS
-            $this->forms = [];
-            $forms = $dom->getElementsByTagName('form');
-            foreach($forms as $f)
-                $this->forms[] = $f;
+            /*
+            PREVENT FROM ADDING THE SAME PAGE BECAUSE OF
+            HTTP 30X STATUS CODE.
+            Ex: the url http://mypage.com/buy redirects
+            to http://mypage.com/login in case of not be
+            logged in
+             */
+            if(!in_array($response['url'], $urlBuffer))
+            {
+                $this->comments = [];
+                $headers = $response['headers'];
+                $html = $response['html'];
+                $dom = new DomDocument();
+                $dom->loadHTML($html);
+                self::showDOMNode($dom);
+                //GET FORMS
+                $this->forms = [];
+                $forms = $dom->getElementsByTagName('form');
+                foreach($forms as $f)
+                    $this->forms[] = $f;
 
-            $this->data[] =
-            ['url'=>$response['url'],
-            'comments'=>$this->comments,
-            'forms'=>$this->forms,
-            'headers'=>$headers];
+                $urlBuffer[] = $response['url'];
+                $this->data[] =
+                [
+                    'url'=>$response['url'],
+                    'comments'=>$this->comments,
+                    'forms'=>$this->forms,
+                    'headers'=>$headers
+                ];
+            }
         }
     }
 
@@ -265,15 +279,6 @@ class Domain
     public function addPage($p)
     {
         $this->pages[] = $p;
-    }
-
-    public function is_absolute($url)
-    {
-        $pattern = "/^(?:ftp|https?|feed):\/\/(?:(?:(?:[\w\.\-\+!$&'\(\)*\+,;=]|%[0-9a-f]{2})+:)*
-        (?:[\w\.\-\+%!$&'\(\)*\+,;=]|%[0-9a-f]{2})+@)?(?:
-        (?:[a-z0-9\-\.]|%[0-9a-f]{2})+|(?:\[(?:[0-9a-f]{0,4}:)*(?:[0-9a-f]{0,4})\]))(?::[0-9]+)?(?:[\/|\?]
-        (?:[\w#!:\.\?\+=&@$'~*,;\/\(\)\[\]\-]|%[0-9a-f]{2})*)?$/xi";
-        return (bool) preg_match($pattern, $url);
     }
 
     /*
@@ -332,29 +337,10 @@ class Domain
                         $action = $url;
                     else
                         $action = $actionAttr;
-                    if(!self::is_absolute($action))
-                    {
-                        if(substr($action, 0, 2) == '//')
-                        {
-                            $protocol = parse_url($this->host)['scheme'];
-                            $action = $protocol.":".$action;
-                        }
-                        //IS THE LINK IN THE ROOT DIRECTORY ?
-                        elseif(substr($action, 0, 1) == '/')
-                            $action = $this->host.substr($action,1);
-                        elseif(substr($action, 0, 3) == '../')
-                            $action = '';
-                        elseif(substr($action, 0, 2) == './')
-                            $action = $response['url'].substr($action, 2);
-                        else
-                        {
-                            $extension = pathinfo(parse_url($url)['path'], PATHINFO_EXTENSION);
-                            if($extension == "")
-                                $action = $url.$action;
-                            else
-                                $action = $url;
-                        }
-                    }
+                    //IS THE ACTION ATTRIBUTE A RELATIVE LINK?
+                    if(!Url::is_absolute($action))
+                        $action = self::getAbsoutePath($action, $url, '');
+
                     //
                     $result .= "<div name='forms' class='center-text' style='margin-left:30px'>";
                     $result .= "<h5><strong><span style='color:#e68a00'>[ * ]</span>Form: </strong></h5><br>";
@@ -368,9 +354,9 @@ class Domain
                         $result .= "<strong><span style='color:red'> * </span>input: </strong><br>";
                         $name = $input->getAttribute('name');
                         $type = $input->getAttribute('type');
-                        //echo $type;
                         $value = $input->getAttribute('value');
                         $result .= $name.": ".$type;
+
                         if($value != "")
                         {
                             $result .= " => ".$value;
