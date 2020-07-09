@@ -1,4 +1,12 @@
 <?php
+
+/**
+ * Class with the logic about the pages
+ * NOT IN USE FOR THE MOMENT!
+ *
+ * @author Mr.Medi <https://github.com/mr-medi>
+ * @version 1.0
+ */
 class Page
 {
     private $url;

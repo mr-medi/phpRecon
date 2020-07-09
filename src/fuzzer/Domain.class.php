@@ -1,52 +1,63 @@
 <?php
+
+/**
+ * Class with the logic to get all HTML comments,
+ * forms, headers...
+ *
+ * @author Mr.Medi <https://github.com/mr-medi>
+ * @version 1.0
+ */
 class Domain
 {
     /**
-    *URL from user input
-    *Ex: http://mypage.com/login.php
-    *@var string
+     * URL from user input
+     * Ex: http://mypage.com/login.php
+     * @var str
      */
     private $url;
 
     /**
-    *Host of the URL
-    *Ex: http://mypage.com/
-    *@var string
+     * Host of the URL
+     * Ex: http://mypage.com/
+     * @var str
      */
     private $host;
 
     /**
-    *Un dominio tiene paginas asociadas, por ejemplo:
-    *login.php, noticias.php...
-    *@var array
+     * Un dominio tiene paginas asociadas, por ejemplo:
+     * login.php, noticias.php...
+     * @var array
      */
     private $pages;
 
     /**
-    *HTML comments foreach page
-    *@var array
+     * HTML comments foreach page
+     * @var array
      */
     private $comments;
 
     /**
-    *HTML forms foreach page
-    *@var array
+     * HTML forms foreach page
+     * @var array
      */
     private $forms;
 
     /**
-    *HTTP responses foreach page
-    *@var array
+     * HTTP responses foreach page
+     * @var array
      */
     private $responses;
 
     /**
-    *Final results about the scan
-    *@var array
+     * Final results about the scan
+     * @var array
      */
     private $data;
 
-
+    /**
+     * Constructor of the Domain
+     * @param str $url URL given by the user
+     */
     public function __construct($url)
     {
         $this->url = $url;
@@ -62,8 +73,9 @@ class Domain
             $this->host = $parser['scheme']."://".$parser['host']."/";
     }
 
-    /*
-
+    /**
+     * Do the scan and returns the data
+     * @return array Final data of the scan
      */
     public function getDataScan()
     {
@@ -75,9 +87,10 @@ class Domain
         return $this->data;
     }
 
-    /*
-    Do a GET request to the robots.txt file on the domain  given.
-    Ex: http://mypage.com/robots.txt
+    /**
+     * Do a GET request to the robots.txt file on the domain  given.
+     * Ex: http://mypage.com/robots.txt
+     * @return str
      */
     public function getRobotsFile()
     {
@@ -93,9 +106,10 @@ class Domain
         return $httpCode == 200 ? "$format<pre>".htmlspecialchars($html)."</pre><br>" : 'robots.txt not found...';
     }
 
-    /*
-    Do a Google dork search using the 'site:' dork.
-    Ex: site:mydomain.com
+    /**
+     * Do a Google dork search using the 'site:' dork
+     * and add it to the urls array
+     * Dork example: site:mydomain.com
      */
     public function getPublicInfo()
     {
@@ -123,8 +137,8 @@ class Domain
         }
     }
 
-    /*
-
+    /**
+     *
      */
     public function getLinks()
     {
@@ -212,13 +226,21 @@ class Domain
         }
     }
 
+    /**
+     *
+     * @param str $link
+     * @param str $fullURL
+     * @param str $extension
+     * @return str Absolute URL
+     */
     public function getAbsoutePath($link, $fullURL, $extension)
     {
        return Url::parse($fullURL)->join($link);
     }
 
-    /*
-    Get all HTML comments,forms,headers of all the links.
+    /**
+     * Get all HTML comments, forms, headers of all the links
+     * and add it to the data array
      */
     public function getComments()
     {
@@ -260,6 +282,10 @@ class Domain
         }
     }
 
+    /**
+     * [showDOMNode description]
+     * @param  [type] $domNode [description]
+     */
     public function showDOMNode($domNode)
     {
         foreach ($domNode->childNodes as $node)
@@ -276,14 +302,18 @@ class Domain
         }
     }
 
+    /**
+     * Add a page given a url
+     * @param str $p URL of the page
+     */
     public function addPage($p)
     {
         $this->pages[] = $p;
     }
 
-    /*
-    Return all comments with custom style
-    @return string
+    /**
+     * Return all HTML comments with custom style
+     * @return str
      */
     public function getParsedComments($url)
     {
@@ -313,9 +343,9 @@ class Domain
         return $result;
     }
 
-    /*
-    Return all forms with custom style
-    @return string
+    /**
+     * Return all HTML forms with custom style
+     * @return str
      */
     public function getParsedForms($url)
     {
@@ -398,6 +428,11 @@ class Domain
         return $result;
     }
 
+    /**
+     * Get all HTTP headers given a url
+     * @param str $url URL to parse headers
+     * @return str Parsed headers
+     */
     public function getParsedHeaders($url)
     {
         $result = "";
@@ -417,6 +452,11 @@ class Domain
         return $result;
     }
 
+    /**
+     * Parse all the info and send it to the
+     * index.php file
+     * @return str HTML result
+     */
     public function getParsedDataScan()
     {
         $result = "";

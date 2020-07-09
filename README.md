@@ -6,9 +6,9 @@ Collect information about a domain like HTML comments to get a possible hidden f
 
 ``` php
 <?php
-		$domain = new Domain('http://mypage.com');            
+		$domain = new Domain('http://mypage.com');
 		echo $domain->getRobotsFile();
-        echo $domain->getParsedDataScan();
+		echo $domain->getParsedDataScan();
 
 ```
 

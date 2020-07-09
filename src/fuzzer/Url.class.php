@@ -1,38 +1,47 @@
 <?php
 
+/**
+ * Class to parse URLS and get the absolute path 
+ *
+ * @author Mr.Medi <https://github.com/mr-medi>
+ * @version 1.0
+ */
 class Url
 {
-
 	/**
 	 * Ex: http(s)://
-	 * @var string
+	 * @var str
 	 */
 	public $scheme;
 
 	/**
 	 * Ex: www.mypage.com
-	 * @var string
+	 * @var str
 	 */
 	public $domain;
 
 	/**
 	 * Ex: /search
-	 * @var string
+	 * @var str
 	 */
 	public $path;
 
 	/**
 	 * Ex: ?q=foo
-	 * @var string
+	 * @var str
 	 */
 	public $query;
 
 	/**
 	 * Ex: #top
-	 * @var string
+	 * @var str
 	 */
 	public $fragment;
 
+	/**
+	 *
+	 * @param str $url
+	 */
 	private function __construct($url)
 	{
 		preg_match_all( '/^(([^:\/?#]+):)?(\/\/([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?$/', $url, $m );
@@ -43,6 +52,11 @@ class Url
 		$this->fragment = $m[9][0];
 	}
 
+	/**
+	 *
+	 * @param str  $url
+	 * @return boolean
+	 */
 	public static function is_absolute($url)
 	{
 		$pattern = "/^(?:ftp|https?|feed):\/\/(?:(?:(?:[\w\.\-\+!$&'\(\)*\+,;=]|%[0-9a-f]{2})+:)*
@@ -52,6 +66,10 @@ class Url
 		return (bool) preg_match($pattern, $url);
 	}
 
+	/**
+	 *
+	 * @return str
+	 */
 	private function toString()
 	{
 		$string = '';
@@ -72,6 +90,11 @@ class Url
 		return $string;
 	}
 
+	/**
+	 *
+	 * @param str $path
+	 * @return str
+	 */
 	private function normalizePath($path)
 	{
 		if(empty($path))
@@ -89,6 +112,8 @@ class Url
 
 	/**
 	 * Parse an url string
+	 * @param str $url
+	 * @return Url
 	 */
 	public static function parse($url)
 	{
@@ -100,6 +125,8 @@ class Url
 
 	/**
 	 * Join with a relative url
+	 * @param str $relative
+	 * @return Url
 	 */
 	public function join($relative)
 	{

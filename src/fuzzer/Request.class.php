@@ -1,17 +1,10 @@
 <?php
+
 /**
- * A php library to make HTTP Requests using curl
- * Website: https://github.com/mr-medi
+ * A php library to make HTTP Requests using curl with threading
+ * and get all the HTTP response headers parsed and body
  *
- * <pre>
- * echo phpUri::parse('https://www.google.com/')->join('foo');
- * //==> https://www.google.com/foo
- * </pre>
- *
- * Licensed under The MIT License
- * Redistributions of files must retain the above copyright notice.
- *
- * @author Mr.medi
+ * @author Mr.medi <https://github.com/mr-medi>
  * @version 1.0
  */
 class Request
@@ -22,6 +15,10 @@ class Request
     private $headersResponse;
     private $response;
 
+    /**
+     * Constructor of the request
+     * @param array $urls
+     */
     public function __construct($urls)
     {
         $this->urls = $urls;
@@ -30,6 +27,11 @@ class Request
         $this->params = array();
     }
 
+    /**
+     * DO HTTP GET request using multi threading of
+     * PHP-CURL
+     * @return array Info of the HTTP requests
+     */
     public function doGetRequests()
     {
         $dataURLS = array();
@@ -87,6 +89,12 @@ class Request
         return $dataURLS;
     }
 
+    /**
+     * DO HTTP POST request using multi threading of
+     * PHP-CURL
+     * @param array $urls
+     * @return array info of the HTTP POST request
+     */
     public function doPostRequests($urls)
     {
         $dataURLS = array();
@@ -151,7 +159,7 @@ class Request
               $header = self::getHeaders($header);
               //extract body
               $body = substr($output, $headerSize);
-              $dataURLS[] = ['url'=>$info['url'],'html'=>$body,'headers'=>$header,'http_code'=>$info['http_code'],'params'=>$params];
+              $dataURLS[] = ['url'=>$info['url'], 'html'=>$body, 'headers'=>$header, 'http_code'=>$info['http_code'], 'params'=>$params];
               // remove the curl handle that just completed
               curl_multi_remove_handle($master, $done['handle']);
           }
@@ -160,6 +168,11 @@ class Request
         return $p;
     }
 
+    /**
+     * Get all the headers parsed given a raw string
+     * @param str $respHeaders
+     * @return array HTTP headers
+     */
     public function getHeaders($respHeaders)
     {
         $headers = array();
@@ -179,11 +192,23 @@ class Request
         return $headers;
     }
 
+    /**
+     * Add a HTTP parameter to the request
+     * @param str $param HTTP parameter name
+     * @param str $value HTTP parameter value
+     */
     public function addParam($param , $value)
     {
         $this->params[] = ['param'=>$param, 'value'=>$value];
     }
 
+    /**
+     *
+     * @param array $words
+     * @param array $params [description]
+     * @param str $action URL that means where send the data
+     * @return str
+     */
     public static function doBruter($words, $params, $action)
     {
         $urls = [];
@@ -217,7 +242,7 @@ class Request
                 }
             }
             if($word != "")
-                $urls[] = ['url'=>$action,'params'=>$paramsRequest];
+                $urls[] = ['url'=>$action, 'params'=>$paramsRequest];
         }
 
         $r = new Request([$action]);
@@ -231,6 +256,6 @@ class Request
                 return "PASSWORD FOUND! => ".$response['value'];
             }
         }
-        return !$pass ? "Sorry, not found :(":"";
+        return !$pass ? "Sorry, not found :(" : "";
     }
 }
