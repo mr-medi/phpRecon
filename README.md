@@ -35,7 +35,7 @@ Finally, we iterate through each URL in the generated array and save all the HTM
  retrieve the robots.txt file.
 
 You can see the main page in the following image:
-![Index page](https://github.com/mr-medi/phpRecon/assets/images/page.png?raw=true)
+![Index page](https://github.com/mr-medi/phpRecon/blob/master/assets/images/page.png?raw=true)
 
 To start, you just have to enter the URL in the input and wait until the results are shown.
 
