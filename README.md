@@ -2,13 +2,20 @@
 
 Collect information about a domain like HTML comments to get a possible hidden functionality, additional information about the backend, vulnerable forms, HTTP headers and use it to plan a attack vector
 
+## Installation
+
+```bash
+#Clone the repo
+git clone https://github.com/mr-medi/phpRecon.git
+```
+
 ## Running the tests
 
 ``` php
 <?php
-		$domain = new Domain('http://mypage.com');
-		echo $domain->getRobotsFile();
-		echo $domain->getParsedDataScan();
+	$domain = new Domain('http://mypage.com');
+	echo $domain->getRobotsFile();
+	echo $domain->getParsedDataScan();
 
 ```
 
@@ -26,6 +33,11 @@ In turn, the login page has the link "http://mypage.com/register" which will be 
 
 Finally, we iterate through each URL in the generated array and save all the HTML comments, forms, HTTP headers on each page and
  retrieve the robots.txt file.
+
+You can see the main page in the following image:
+![Index page](https://github.com/mr-medi/phprecon/assets/images/page.png?raw=true)
+
+To start, you just have to enter the URL in the input and wait until the results are shown.
 
 ## Authors
 
